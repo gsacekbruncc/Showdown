@@ -4,6 +4,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
@@ -11,9 +12,15 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Showdown.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 
 AShowdownCharacter::AShowdownCharacter()
 {
+	LaserBeamNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("LaserBeamNiagara"));
+	LaserBeamNiagara->SetupAttachment(RootComponent);
+	LaserBeamNiagara->SetAutoActivate(false);
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 		
@@ -67,6 +74,9 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AShowdownCharacter::Look);
 		EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartFreeLook);
 		EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFreeLook);
+		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartAimDownSights);
+		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopAimDownSights);
+
 	}
 	else
 	{
@@ -161,9 +171,45 @@ void AShowdownCharacter::StopFreeLook()
 	
 }
 
+void AShowdownCharacter::StartAimDownSights()
+{
+	LaserBeamNiagara->Activate();
+	GetCharacterMovement()->MaxWalkSpeed = 300.f;
+	bAimDownSightsActive = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+
+}
+void AShowdownCharacter::StopAimDownSights()
+{
+	LaserBeamNiagara->Deactivate();
+	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	bAimDownSightsActive = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+
+}
+
 void AShowdownCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (bAimDownSightsActive && GetController())
+	{
+		FRotator CurrentRotation = GetActorRotation();
+		FRotator TargetRotation = GetController()->GetControlRotation();
+		TargetRotation.Pitch = 0.f;
+		TargetRotation.Roll = 0.f;
+
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 10.f);
+		SetActorRotation(NewRotation);
+
+		FVector Start = FVector::ZeroVector;
+		FVector End = FVector(1000.0f, 0.0f, 0.0f);
+
+		LaserBeamNiagara->SetVectorParameter(TEXT("BeamStart"), Start);
+		LaserBeamNiagara->SetVectorParameter(TEXT("BeamEnd"), End);
+
+	}
+
 	bool bMouseMoved = false;
 	if(APlayerController* PC = Cast<APlayerController>(GetController()))
 	{

@@ -10,6 +10,9 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class UStaticMeshComponent;
+class UNiagaraComponent;
+class UNiagaraSystem;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -53,8 +56,22 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* FreeLookAction;
 	
+	/** ADS Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* AimDownSightsAction;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UStaticMeshComponent* LaserBeam;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivate = "true"))
+	UNiagaraComponent* LaserBeamNiagara;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects", meta = (AllowPrivate = "true"))
+	UNiagaraSystem* LaserBeamNiagaraSystem;
+
 	bool bFreeLookActive = false;
 	bool bReturnCamera = false;
+	bool bAimDownSightsActive = false;
 	
 	FRotator StoredControlRotation;
 	FRotator ReturnTargetRotation;
@@ -101,6 +118,8 @@ public:
 
 	void StartFreeLook();
 	void StopFreeLook();
+	void StartAimDownSights();
+	void StopAimDownSights();
 
 	
 
