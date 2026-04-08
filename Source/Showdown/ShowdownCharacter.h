@@ -63,22 +63,31 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* LaserBeam;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivate = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UNiagaraComponent* LaserBeamNiagara;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects", meta = (AllowPrivate = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects", meta = (AllowPrivateAcess = "true"))
 	UNiagaraSystem* LaserBeamNiagaraSystem;
+
+	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAcess = "true"))
+	bool bAimDownSightsActive = false;
+
+	bool bIsJumping = false;
 
 	bool bFreeLookActive = false;
 	bool bReturnCamera = false;
-	bool bAimDownSightsActive = false;
+	bool bFreeLookActiveBeforeADS = false;
+
+	float ADSTargetArmLength = 565.0;
+	float DefaultTargetArmLength = 1167.0;
+	float CameraInterpSpeed;
 	
 	FRotator StoredControlRotation;
 	FRotator ReturnTargetRotation;
 
+	FRotator ADSTargetBoomRotation = FRotator(-34.000000, 0.000000, 0.000000);
+	FRotator DefaultTargetBoomRotation = FRotator(-44.000000, 0.000000, 0.000000);
 	
-
-
 public:
 
 	/** Constructor */
@@ -116,10 +125,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
+	UFUNCTION(BlueprintPure, Category="State")
+	bool isAimDownSightsActive() const { return bAimDownSightsActive; }
+
+	UFUNCTION(BlueprintCallable, Category = "Jump")
+	void SetIsJumping(bool bIsJumping);
+
 	void StartFreeLook();
 	void StopFreeLook();
 	void StartAimDownSights();
 	void StopAimDownSights();
+	void StartADSCamera(float DeltaTime);
+	void StopADSCamera(float DeltaTime);
 
 	
 

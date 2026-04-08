@@ -53,6 +53,8 @@ AShowdownCharacter::AShowdownCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
+
+
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
@@ -72,8 +74,8 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AShowdownCharacter::Look);
-		EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartFreeLook);
-		EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFreeLook);
+		//EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartFreeLook);
+		//EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFreeLook);
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartAimDownSights);
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopAimDownSights);
 
@@ -156,28 +158,16 @@ void AShowdownCharacter::DoJumpEnd()
 	StopJumping();
 }
 
-void AShowdownCharacter::StartFreeLook()
-{
-	bFreeLookActive = true;
-	bReturnCamera = false;
-	StoredControlRotation = GetController()->GetControlRotation();
-}
-
-void AShowdownCharacter::StopFreeLook()
-{
-	bFreeLookActive = false;
-	bReturnCamera = true;
-	ReturnTargetRotation = StoredControlRotation;
-	
-}
-
 void AShowdownCharacter::StartAimDownSights()
 {
-	LaserBeamNiagara->Activate();
-	GetCharacterMovement()->MaxWalkSpeed = 300.f;
-	bAimDownSightsActive = true;
-	GetCharacterMovement()->bOrientRotationToMovement = false;
-
+	if (!bIsJumping)
+	{
+		LaserBeamNiagara->Activate();
+		GetCharacterMovement()->MaxWalkSpeed = 300.f;
+		bAimDownSightsActive = true;
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+	}
+	
 }
 void AShowdownCharacter::StopAimDownSights()
 {
@@ -185,29 +175,63 @@ void AShowdownCharacter::StopAimDownSights()
 	GetCharacterMovement()->MaxWalkSpeed = 500.f;
 	bAimDownSightsActive = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+}
 
+void AShowdownCharacter::SetIsJumping(bool IsJumping)
+{
+	bIsJumping = IsJumping;
+}
+
+void AShowdownCharacter::StartADSCamera(float DeltaTime)
+{
+	FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), ADSTargetBoomRotation, DeltaTime, 10.f);
+	float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ADSTargetArmLength, DeltaTime, 10.f);
+
+	CameraBoom->SetRelativeRotation(NewCameraRotation);
+	CameraBoom->TargetArmLength = NewCameraArmLength;
+}
+
+void AShowdownCharacter::StopADSCamera(float DeltaTime)
+{
+	FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), DefaultTargetBoomRotation, DeltaTime, 10.f);
+	float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, DefaultTargetArmLength, DeltaTime, 10.f);
+
+	CameraBoom->SetRelativeRotation(NewCameraRotation);
+	CameraBoom->TargetArmLength = NewCameraArmLength;
 }
 
 void AShowdownCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bAimDownSightsActive && GetController())
+	//Handles ADS
+	if (bAimDownSightsActive && !bIsJumping && GetController())
 	{
 		FRotator CurrentRotation = GetActorRotation();
 		FRotator TargetRotation = GetController()->GetControlRotation();
 		TargetRotation.Pitch = 0.f;
 		TargetRotation.Roll = 0.f;
 
-		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 10.f);
-		SetActorRotation(NewRotation);
-
+		FRotator NewActorRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 10.f);
+		SetActorRotation(NewActorRotation);
+		
 		FVector Start = FVector::ZeroVector;
 		FVector End = FVector(1000.0f, 0.0f, 0.0f);
 
 		LaserBeamNiagara->SetVectorParameter(TEXT("BeamStart"), Start);
 		LaserBeamNiagara->SetVectorParameter(TEXT("BeamEnd"), End);
 
+		StartADSCamera(DeltaTime);
+
+	}
+	else if(bIsJumping)
+	{
+		StopAimDownSights();
+		StopADSCamera(DeltaTime);
+	}
+	else
+	{
+		StopADSCamera(DeltaTime);
 	}
 
 	bool bMouseMoved = false;
@@ -219,14 +243,56 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		bMouseMoved = !FMath::IsNearlyZero(DX, 1.f);
 
 	}
-	if (bReturnCamera && GetController())
+	
+	// For old free look feature
+	// Return camera to stored rotation if we stopped freelooking but haven't returned to the camera yet, and stop returning if the mouse moves
+	/*if (bReturnCamera && GetController())
 	{
-		FRotator CurrentRotation = GetController()->GetControlRotation();
-		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, ReturnTargetRotation, DeltaTime, 7.f);
-		GetController()->SetControlRotation(NewRotation);
-		if (bMouseMoved)
+		if (!bFreeLookActiveBeforeADS)
 		{
-			bReturnCamera = false;
+			FRotator CurrentRotation = GetController()->GetControlRotation();
+			FRotator NewRotation = FMath::RInterpTo(CurrentRotation, ReturnTargetRotation, DeltaTime, 7.f);
+			GetController()->SetControlRotation(NewRotation);
+			if (bMouseMoved)
+			{
+				bReturnCamera = false;
+			}
 		}
-	}
+		
+	}*/
 }
+
+//Feature removed
+//void AShowdownCharacter::StartFreeLook()
+//{
+//	if (!bAimDownSightsActive)
+//	{
+//		bFreeLookActiveBeforeADS = true;
+//	}
+//	bFreeLookActive = true;
+//	bReturnCamera = false;
+//	StoredControlRotation = GetController()->GetControlRotation();
+//}
+
+//Feature removed
+//void AShowdownCharacter::StopFreeLook()
+//{
+//	bFreeLookActiveBeforeADS = false;
+//	bFreeLookActive = false;
+//	bReturnCamera = true;
+//	ReturnTargetRotation = StoredControlRotation;
+//	if (!bAimDownSightsActive)
+//	{
+//		bFreeLookActive = false;
+//		bReturnCamera = true;
+//		ReturnTargetRotation = StoredControlRotation;
+//	}
+//	else
+//	{
+//		bFreeLookActive = false;
+//		bReturnCamera = false;
+//		StoredControlRotation = GetController()->GetControlRotation();
+//
+//	}
+//}
+
