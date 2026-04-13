@@ -60,6 +60,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AimDownSightsAction;
 
+	/** Fire Weapon Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* FireAction;
+
+	/** Reload Weapon Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* ReloadAction;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* LaserBeam;
 
@@ -70,9 +78,29 @@ protected:
 	UNiagaraSystem* LaserBeamNiagaraSystem;
 
 	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAcess = "true"))
+	bool bIsJumping = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAcess = "true"))
 	bool bAimDownSightsActive = false;
 
-	bool bIsJumping = false;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAcess = "true"))
+	bool bIsReloading = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int AmmoRemaining = 30;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int AmmoCapacity = 30;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int HPRemaining = 100;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int HPCapacity = 100;
+
+	
+	
+	bool bIsFiring = false;
 
 	bool bFreeLookActive = false;
 	bool bReturnCamera = false;
@@ -92,6 +120,8 @@ public:
 
 	/** Constructor */
 	AShowdownCharacter();	
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 
@@ -129,11 +159,42 @@ public:
 	bool isAimDownSightsActive() const { return bAimDownSightsActive; }
 
 	UFUNCTION(BlueprintCallable, Category = "Jump")
-	void SetIsJumping(bool bIsJumping);
+	void SetIsJumping(bool Jumping);
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	bool isFiring() const { return bIsFiring; }
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	bool isReloading() const { return bIsReloading; }
+
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void Reload();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
+	void ServerReload();
+
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void StopReloading();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
+	void ServerStopReloading();
+
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void Fire();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
+	void ServerFire();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
+	void ServerAimDownSights();
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
+	void ServerStopAimDownSights();
 
 	void StartFreeLook();
 	void StopFreeLook();
-	void StartAimDownSights();
+	void StopFiring();
+	
+	void AimDownSights();
 	void StopAimDownSights();
 	void StartADSCamera(float DeltaTime);
 	void StopADSCamera(float DeltaTime);

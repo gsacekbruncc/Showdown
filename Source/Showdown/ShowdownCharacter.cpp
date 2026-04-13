@@ -14,9 +14,12 @@
 #include "Showdown.h"
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
+#include "Net/UnrealNetwork.h"
 
 AShowdownCharacter::AShowdownCharacter()
 {
+	bReplicates = true;
+
 	LaserBeamNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("LaserBeamNiagara"));
 	LaserBeamNiagara->SetupAttachment(RootComponent);
 	LaserBeamNiagara->SetAutoActivate(false);
@@ -59,6 +62,44 @@ AShowdownCharacter::AShowdownCharacter()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
+void AShowdownCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AShowdownCharacter, AmmoRemaining);
+	DOREPLIFETIME(AShowdownCharacter, AmmoCapacity);
+	DOREPLIFETIME(AShowdownCharacter, HPRemaining);
+	DOREPLIFETIME(AShowdownCharacter, HPCapacity);
+	DOREPLIFETIME(AShowdownCharacter, bIsReloading);
+	DOREPLIFETIME(AShowdownCharacter, bAimDownSightsActive);
+}
+
+void AShowdownCharacter::ServerReload_Implementation()
+{
+	Reload();
+}
+
+void AShowdownCharacter::ServerStopReloading_Implementation()
+{
+	StopReloading();
+}
+
+void AShowdownCharacter::ServerFire_Implementation()
+{
+	Fire();
+}
+void AShowdownCharacter::ServerAimDownSights_Implementation()
+{
+	if (!bIsJumping)
+	{
+		bAimDownSightsActive = true;
+	}
+}
+void AShowdownCharacter::ServerStopAimDownSights_Implementation()
+{
+	bAimDownSightsActive = false;
+}
+
 void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -74,10 +115,19 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AShowdownCharacter::Look);
+
+		// ADS
+		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::ServerAimDownSights);
+		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::ServerStopAimDownSights);
+		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::AimDownSights);
+		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopAimDownSights);
+
+		//EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &AShowdownCharacter::Fire);
+		//EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFiring);
+		//EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &AShowdownCharacter::Reload);
+		//EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopReloading);
 		//EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartFreeLook);
 		//EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFreeLook);
-		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartAimDownSights);
-		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopAimDownSights);
 
 	}
 	else
@@ -158,7 +208,7 @@ void AShowdownCharacter::DoJumpEnd()
 	StopJumping();
 }
 
-void AShowdownCharacter::StartAimDownSights()
+void AShowdownCharacter::AimDownSights()
 {
 	if (!bIsJumping)
 	{
@@ -167,7 +217,6 @@ void AShowdownCharacter::StartAimDownSights()
 		bAimDownSightsActive = true;
 		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
-	
 }
 void AShowdownCharacter::StopAimDownSights()
 {
@@ -184,11 +233,14 @@ void AShowdownCharacter::SetIsJumping(bool IsJumping)
 
 void AShowdownCharacter::StartADSCamera(float DeltaTime)
 {
-	FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), ADSTargetBoomRotation, DeltaTime, 10.f);
-	float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ADSTargetArmLength, DeltaTime, 10.f);
+	if (!bIsReloading)
+	{
+		FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), ADSTargetBoomRotation, DeltaTime, 10.f);
+		float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ADSTargetArmLength, DeltaTime, 10.f);
 
-	CameraBoom->SetRelativeRotation(NewCameraRotation);
-	CameraBoom->TargetArmLength = NewCameraArmLength;
+		CameraBoom->SetRelativeRotation(NewCameraRotation);
+		CameraBoom->TargetArmLength = NewCameraArmLength;
+	}
 }
 
 void AShowdownCharacter::StopADSCamera(float DeltaTime)
@@ -200,12 +252,42 @@ void AShowdownCharacter::StopADSCamera(float DeltaTime)
 	CameraBoom->TargetArmLength = NewCameraArmLength;
 }
 
+void AShowdownCharacter::Fire()
+{
+	if (bAimDownSightsActive && !bIsReloading)
+	{
+		if (AmmoRemaining > 0)
+		{
+			AmmoRemaining--;
+		}
+		bIsFiring = true;
+	}
+	StopFiring();
+}
+
+void AShowdownCharacter::StopFiring()
+{
+	bIsFiring = false;
+}
+
+void AShowdownCharacter::Reload()
+{	
+	StopFiring();
+	bIsReloading = true;
+}
+
+void AShowdownCharacter::StopReloading()
+{
+	AmmoRemaining = 30;
+	bIsReloading = false;
+}
+
 void AShowdownCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 	//Handles ADS
-	if (bAimDownSightsActive && !bIsJumping && GetController())
+	if (bAimDownSightsActive && !bIsJumping && !bIsReloading && GetController())
 	{
 		FRotator CurrentRotation = GetActorRotation();
 		FRotator TargetRotation = GetController()->GetControlRotation();
@@ -224,7 +306,7 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		StartADSCamera(DeltaTime);
 
 	}
-	else if(bIsJumping)
+	else if(bIsJumping || bIsReloading)
 	{
 		StopAimDownSights();
 		StopADSCamera(DeltaTime);
