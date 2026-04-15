@@ -15,14 +15,21 @@
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "Net/UnrealNetwork.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
 
 AShowdownCharacter::AShowdownCharacter()
 {
 	bReplicates = true;
 
+	LaserBeamOrigin = CreateDefaultSubobject<USceneComponent>(TEXT("LaserBeamOrigin"));
+	LaserBeamOrigin->SetupAttachment(RootComponent);
+	
+	
 	LaserBeamNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("LaserBeamNiagara"));
 	LaserBeamNiagara->SetupAttachment(RootComponent);
-	LaserBeamNiagara->SetAutoActivate(false);
+	LaserBeamNiagara->SetupAttachment(LaserBeamOrigin);
+	LaserBeamNiagara->SetAutoActivate(true);
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -100,6 +107,29 @@ void AShowdownCharacter::ServerStopAimDownSights_Implementation()
 	bAimDownSightsActive = false;
 }
 
+void AShowdownCharacter::ServerApplyPointDamage_Implementation(float DamageAmount)
+{
+	ApplyPointDamage(DamageAmount);
+}
+
+void AShowdownCharacter::ServerRespawn_Implementation()
+{
+	HPRemaining = HPCapacity;
+	AmmoRemaining = AmmoCapacity;
+	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+
+	if (!NavSystem)
+		return;
+
+	FNavLocation RandomLocation;
+
+	bool bFound = NavSystem->GetRandomReachablePointInRadius(GetActorLocation(), 2000.0f, RandomLocation);
+
+	if (bFound)
+	{
+		SetActorLocation(RandomLocation.Location);
+	}
+}
 void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -282,6 +312,14 @@ void AShowdownCharacter::StopReloading()
 	bIsReloading = false;
 }
 
+void AShowdownCharacter::ApplyPointDamage(float DamageAmount)
+{
+	if (HPRemaining > 0)
+	{
+		HPRemaining -= DamageAmount;
+	}
+}
+
 void AShowdownCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -294,11 +332,11 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		TargetRotation.Pitch = 0.f;
 		TargetRotation.Roll = 0.f;
 
-		FRotator NewActorRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 10.f);
+		FRotator NewActorRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 100.0f);
 		SetActorRotation(NewActorRotation);
 		
 		FVector Start = FVector::ZeroVector;
-		FVector End = FVector(1000.0f, 0.0f, 0.0f);
+		FVector End = FVector(500.0f, 0.0f, 0.0f);
 
 		LaserBeamNiagara->SetVectorParameter(TEXT("BeamStart"), Start);
 		LaserBeamNiagara->SetVectorParameter(TEXT("BeamEnd"), End);

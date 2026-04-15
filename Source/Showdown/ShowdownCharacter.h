@@ -70,6 +70,8 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* LaserBeam;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* LaserBeamOrigin;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UNiagaraComponent* LaserBeamNiagara;
@@ -93,10 +95,10 @@ protected:
 	int AmmoCapacity = 30;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
-	int HPRemaining = 100;
+	float HPRemaining = 100;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
-	int HPCapacity = 100;
+	float HPCapacity = 100;
 
 	
 	
@@ -187,13 +189,21 @@ public:
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
 	void ServerAimDownSights();
+
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Combat")
 	void ServerStopAimDownSights();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Status")
+	void ServerApplyPointDamage(float DamageAmount);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Status")
+	void ServerRespawn();
 
 	void StartFreeLook();
 	void StopFreeLook();
 	void StopFiring();
 	
+	void ApplyPointDamage(float DamageAmount);
 	void AimDownSights();
 	void StopAimDownSights();
 	void StartADSCamera(float DeltaTime);
