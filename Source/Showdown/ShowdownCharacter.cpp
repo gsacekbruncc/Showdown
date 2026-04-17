@@ -29,7 +29,7 @@ AShowdownCharacter::AShowdownCharacter()
 	LaserBeamNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("LaserBeamNiagara"));
 	LaserBeamNiagara->SetupAttachment(RootComponent);
 	LaserBeamNiagara->SetupAttachment(LaserBeamOrigin);
-	LaserBeamNiagara->SetAutoActivate(true);
+	LaserBeamNiagara->SetAutoActivate(false);
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -97,14 +97,11 @@ void AShowdownCharacter::ServerFire_Implementation()
 }
 void AShowdownCharacter::ServerAimDownSights_Implementation()
 {
-	if (!bIsJumping)
-	{
-		bAimDownSightsActive = true;
-	}
+	AimDownSights();
 }
 void AShowdownCharacter::ServerStopAimDownSights_Implementation()
 {
-	bAimDownSightsActive = false;
+	StopAimDownSights();
 }
 
 void AShowdownCharacter::ServerApplyPointDamage_Implementation(float DamageAmount)
@@ -130,6 +127,7 @@ void AShowdownCharacter::ServerRespawn_Implementation()
 		SetActorLocation(RandomLocation.Location);
 	}
 }
+
 void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -246,6 +244,7 @@ void AShowdownCharacter::AimDownSights()
 		GetCharacterMovement()->MaxWalkSpeed = 300.f;
 		bAimDownSightsActive = true;
 		GetCharacterMovement()->bOrientRotationToMovement = false;
+		//bUseControllerRotationYaw = true;
 	}
 }
 void AShowdownCharacter::StopAimDownSights()
@@ -254,6 +253,7 @@ void AShowdownCharacter::StopAimDownSights()
 	GetCharacterMovement()->MaxWalkSpeed = 500.f;
 	bAimDownSightsActive = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+	//bUseControllerRotationYaw = false;
 }
 
 void AShowdownCharacter::SetIsJumping(bool IsJumping)
@@ -332,9 +332,9 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		TargetRotation.Pitch = 0.f;
 		TargetRotation.Roll = 0.f;
 
-		FRotator NewActorRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 100.0f);
+		FRotator NewActorRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 25.0f);
 		SetActorRotation(NewActorRotation);
-		
+
 		FVector Start = FVector::ZeroVector;
 		FVector End = FVector(500.0f, 0.0f, 0.0f);
 
