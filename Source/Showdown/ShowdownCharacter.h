@@ -100,6 +100,14 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPCapacity = 100;
 
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	float ShieldRemaining = 50;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	float ShieldCapacity = 50;
+
+	
+
 	
 	
 	bool bIsFiring = false;

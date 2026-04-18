@@ -113,6 +113,7 @@ void AShowdownCharacter::ServerRespawn_Implementation()
 {
 	HPRemaining = HPCapacity;
 	AmmoRemaining = AmmoCapacity;
+	ShieldRemaining = ShieldCapacity;
 	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
 
 	if (!NavSystem)
@@ -314,7 +315,17 @@ void AShowdownCharacter::StopReloading()
 
 void AShowdownCharacter::ApplyPointDamage(float DamageAmount)
 {
-	if (HPRemaining > 0)
+	float DamageRemaining;
+	if (ShieldRemaining > 0)
+	{
+		if (ShieldRemaining < DamageAmount)
+		{
+			DamageRemaining = DamageAmount - ShieldRemaining;
+			HPRemaining -= DamageRemaining;
+		}
+		ShieldRemaining -= DamageAmount;
+	}
+	else if (HPRemaining > 0)
 	{
 		HPRemaining -= DamageAmount;
 	}
