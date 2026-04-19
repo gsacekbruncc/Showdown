@@ -129,6 +129,37 @@ void AShowdownCharacter::ServerRespawn_Implementation()
 	}
 }
 
+void AShowdownCharacter::ServerRestoreHP_Implementation(float amount)
+{
+	RestoreHP(amount);
+}
+
+void AShowdownCharacter::ServerRestoreShield_Implementation(float amount)
+{
+	RestoreShield(amount);
+}
+
+void AShowdownCharacter::ServerRestoreAmmo_Implementation(float amount)
+{
+	RestoreAmmo(amount);
+}
+
+void AShowdownCharacter::ClientUpdateAmmo_Implementation(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading)
+{
+	HUDUpdateAmmo(NewAmmoRemaining, NewAmmoCapacity, NewIsReloading);	
+}
+
+void AShowdownCharacter::ClientUpdateHP_Implementation(float NewHPRemaining, float NewHPCapacity)
+{
+	HUDUpdateHP(NewHPRemaining, NewHPCapacity);
+}
+
+void AShowdownCharacter::ClientUpdateShield_Implementation(float NewShieldRemaining, float NewShieldCapacity)
+{
+	HUDUpdateShield(NewShieldRemaining, NewShieldCapacity);
+}
+
+
 void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -150,14 +181,6 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::ServerStopAimDownSights);
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::AimDownSights);
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopAimDownSights);
-
-		//EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &AShowdownCharacter::Fire);
-		//EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFiring);
-		//EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &AShowdownCharacter::Reload);
-		//EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopReloading);
-		//EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Started, this, &AShowdownCharacter::StartFreeLook);
-		//EnhancedInputComponent->BindAction(FreeLookAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopFreeLook);
-
 	}
 	else
 	{
@@ -293,17 +316,10 @@ void AShowdownCharacter::Fire()
 		}
 		bIsFiring = true;
 	}
-	StopFiring();
-}
-
-void AShowdownCharacter::StopFiring()
-{
-	bIsFiring = false;
 }
 
 void AShowdownCharacter::Reload()
 {	
-	StopFiring();
 	bIsReloading = true;
 }
 
@@ -323,6 +339,11 @@ void AShowdownCharacter::ApplyPointDamage(float DamageAmount)
 			DamageRemaining = DamageAmount - ShieldRemaining;
 			HPRemaining -= DamageRemaining;
 		}
+		if (DamageAmount > ShieldRemaining)
+		{
+			ShieldRemaining = 0;
+			return;
+		}
 		ShieldRemaining -= DamageAmount;
 	}
 	else if (HPRemaining > 0)
@@ -330,6 +351,45 @@ void AShowdownCharacter::ApplyPointDamage(float DamageAmount)
 		HPRemaining -= DamageAmount;
 	}
 }
+
+void AShowdownCharacter::RestoreHP(float amount)
+{
+	if(amount >= HPCapacity - HPRemaining)
+	{
+		HPRemaining = HPCapacity;
+	}
+	else
+	{
+		HPRemaining += amount;
+	}
+	ClientUpdateHP(HPRemaining, HPCapacity);
+	
+}
+void AShowdownCharacter::RestoreShield(float amount)
+{
+	if (amount >= ShieldCapacity - ShieldRemaining)
+	{
+		ShieldRemaining = ShieldCapacity;
+	}
+	else
+	{
+		ShieldRemaining += amount;
+	}
+	ClientUpdateShield(ShieldRemaining, ShieldCapacity);
+}
+void AShowdownCharacter::RestoreAmmo(float amount)
+{
+	if (amount >= AmmoCapacity - AmmoRemaining)
+	{
+		AmmoRemaining = AmmoCapacity;
+	}
+	else
+	{
+		AmmoRemaining += amount;
+	}
+	ClientUpdateAmmo(AmmoRemaining, AmmoCapacity, bIsReloading);
+}
+
 
 void AShowdownCharacter::Tick(float DeltaTime)
 {
@@ -355,7 +415,7 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		StartADSCamera(DeltaTime);
 
 	}
-	else if(bIsJumping || bIsReloading)
+	else if (bIsJumping || bIsReloading)
 	{
 		StopAimDownSights();
 		StopADSCamera(DeltaTime);
@@ -366,7 +426,7 @@ void AShowdownCharacter::Tick(float DeltaTime)
 	}
 
 	bool bMouseMoved = false;
-	if(APlayerController* PC = Cast<APlayerController>(GetController()))
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		float DX = 0.f, DY = 0.f;
 		PC->GetInputMouseDelta(DX, DY);
@@ -374,56 +434,4 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		bMouseMoved = !FMath::IsNearlyZero(DX, 1.f);
 
 	}
-	
-	// For old free look feature
-	// Return camera to stored rotation if we stopped freelooking but haven't returned to the camera yet, and stop returning if the mouse moves
-	/*if (bReturnCamera && GetController())
-	{
-		if (!bFreeLookActiveBeforeADS)
-		{
-			FRotator CurrentRotation = GetController()->GetControlRotation();
-			FRotator NewRotation = FMath::RInterpTo(CurrentRotation, ReturnTargetRotation, DeltaTime, 7.f);
-			GetController()->SetControlRotation(NewRotation);
-			if (bMouseMoved)
-			{
-				bReturnCamera = false;
-			}
-		}
-		
-	}*/
 }
-
-//Feature removed
-//void AShowdownCharacter::StartFreeLook()
-//{
-//	if (!bAimDownSightsActive)
-//	{
-//		bFreeLookActiveBeforeADS = true;
-//	}
-//	bFreeLookActive = true;
-//	bReturnCamera = false;
-//	StoredControlRotation = GetController()->GetControlRotation();
-//}
-
-//Feature removed
-//void AShowdownCharacter::StopFreeLook()
-//{
-//	bFreeLookActiveBeforeADS = false;
-//	bFreeLookActive = false;
-//	bReturnCamera = true;
-//	ReturnTargetRotation = StoredControlRotation;
-//	if (!bAimDownSightsActive)
-//	{
-//		bFreeLookActive = false;
-//		bReturnCamera = true;
-//		ReturnTargetRotation = StoredControlRotation;
-//	}
-//	else
-//	{
-//		bFreeLookActive = false;
-//		bReturnCamera = false;
-//		StoredControlRotation = GetController()->GetControlRotation();
-//
-//	}
-//}
-

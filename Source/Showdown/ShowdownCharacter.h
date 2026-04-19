@@ -70,6 +70,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* LaserBeam;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* LaserBeamOrigin;
 
@@ -91,19 +92,19 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoRemaining = 30;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoCapacity = 30;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPRemaining = 100;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPCapacity = 100;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldRemaining = 50;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldCapacity = 50;
 
 	
@@ -207,13 +208,42 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Status")
 	void ServerRespawn();
 
-	void StartFreeLook();
-	void StopFreeLook();
-	void StopFiring();
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerRestoreHP(float amount);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerRestoreShield(float amount);
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerRestoreAmmo(float amount);
+
+	UFUNCTION(Client, Reliable, BlueprintCallable)
+	void ClientUpdateAmmo(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading);
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void HUDUpdateAmmo(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading);
+
+	UFUNCTION(Client, Reliable, BlueprintCallable)
+	void ClientUpdateHP(float NewHPRemaining, float NewHPCapacity);
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void HUDUpdateHP(float NewHPRemaining, float NewHPCapacity);
+
+	UFUNCTION(Client, Reliable, BlueprintCallable)
+	void ClientUpdateShield(float NewShieldRemaining, float NewShieldCapacity);
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void HUDUpdateShield(float NewShieldRemaining, float NewShieldCapacity);
+	
+	void RestoreHP(float amount);
+	void RestoreShield(float amount);
+	void RestoreAmmo(float amount);
 	
 	void ApplyPointDamage(float DamageAmount);
+	
 	void AimDownSights();
 	void StopAimDownSights();
+	
 	void StartADSCamera(float DeltaTime);
 	void StopADSCamera(float DeltaTime);
 
