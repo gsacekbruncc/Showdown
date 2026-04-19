@@ -29,6 +29,8 @@ AResourcePickup::AResourcePickup()
 
 	CollisionBox->OnComponentBeginOverlap.AddDynamic(this, &AResourcePickup::OnOverlapBegin);
 
+	RotatingMovementComponent = CreateDefaultSubobject<URotatingMovementComponent>(TEXT("RotatingComponent"));
+	RotatingMovementComponent->RotationRate = FRotator(0.0f, 90.0f, 0.0f);
 
 }
 

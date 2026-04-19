@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include "GameFramework/RotatingMovementComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ResourcePickup.generated.h"
+
 
 class UBoxComponent;
 class UStaticMeshComponent;
@@ -45,6 +47,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	EPickupType PickupType;
+
+	UPROPERTY(VisibleAnywhere)
+	URotatingMovementComponent* RotatingMovementComponent;
 
 	
 
