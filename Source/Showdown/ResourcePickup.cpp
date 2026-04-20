@@ -20,6 +20,9 @@ AResourcePickup::AResourcePickup()
 	PickupMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickupMesh"));
 	PickupMesh->SetupAttachment(Root);
 
+	PickupMesh2 = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickupMesh2"));
+	PickupMesh2->SetupAttachment(PickupMesh);
+
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	CollisionBox->SetupAttachment(Root);
 
@@ -64,17 +67,27 @@ void AResourcePickup::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, A
 	switch (PickupType)
 	{
 		case EPickupType::Health:
-			PlayerCharacter->RestoreHP(RestoreAmount);
+			if(PlayerCharacter->GetHPRemaining() != PlayerCharacter->GetHPCapacity())
+			{
+				PlayerCharacter->RestoreHP(RestoreAmount);
+				Destroy();
+			}
 			break;
 		case EPickupType::Shield:
-			PlayerCharacter->RestoreShield(RestoreAmount);
+			if (PlayerCharacter->GetShieldRemaining() != PlayerCharacter->GetShieldCapacity())
+			{
+				PlayerCharacter->RestoreShield(RestoreAmount);
+				Destroy();
+			}
 			break;
 		case EPickupType::Ammo:
-			PlayerCharacter->RestoreAmmo(RestoreAmount);
+			if (PlayerCharacter->GetMaxAmmoCapacity() != PlayerCharacter->GetAmmoCapacity())
+			{
+				PlayerCharacter->RestoreAmmo(RestoreAmount);
+				Destroy();
+			}
 			break;
-
 	}
-	Destroy();
 }
 
 

@@ -42,8 +42,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PickupMesh;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* PickupMesh2;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
-	float RestoreAmount;;
+	float RestoreAmount;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	EPickupType PickupType;

@@ -92,19 +92,25 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoRemaining = 30;
 
-	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoCapacity = 30;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int MaxAmmoCapacity = 90;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int MagazineCapacity = 30;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPRemaining = 100;
 
-	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPCapacity = 100;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldRemaining = 50;
 
-	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldCapacity = 50;
 
 	
@@ -116,6 +122,10 @@ protected:
 	bool bFreeLookActive = false;
 	bool bReturnCamera = false;
 	bool bFreeLookActiveBeforeADS = false;
+
+	int AmmoRequested;
+	int AmmoTransfered;
+	int AmmoCapacityRemaining;
 
 	float ADSTargetArmLength = 565.0;
 	float DefaultTargetArmLength = 1167.0;
@@ -234,7 +244,28 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void HUDUpdateShield(float NewShieldRemaining, float NewShieldCapacity);
+
+	UFUNCTION()
+	float GetHPRemaining() const { return HPRemaining; }
+
+	UFUNCTION()
+	float GetHPCapacity() const { return HPCapacity; }
+
+	UFUNCTION()
+	float GetShieldRemaining() const { return ShieldRemaining; }
+
+	UFUNCTION()
+	float GetShieldCapacity() const { return ShieldCapacity; }
+
+	UFUNCTION()
+	int GetAmmoRemaining() const { return AmmoRemaining; }
 	
+	UFUNCTION()
+	int GetAmmoCapacity() const { return AmmoCapacity; }
+
+	UFUNCTION()
+	int GetMaxAmmoCapacity() const { return MaxAmmoCapacity; }
+
 	void RestoreHP(float amount);
 	void RestoreShield(float amount);
 	void RestoreAmmo(float amount);

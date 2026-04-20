@@ -83,7 +83,7 @@ void AShowdownCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 void AShowdownCharacter::ServerReload_Implementation()
 {
-	Reload();
+		Reload();
 }
 
 void AShowdownCharacter::ServerStopReloading_Implementation()
@@ -320,12 +320,17 @@ void AShowdownCharacter::Fire()
 
 void AShowdownCharacter::Reload()
 {	
+	AmmoRequested = MagazineCapacity - AmmoRemaining;
+	AmmoTransfered = FMath::Min(AmmoRequested, AmmoCapacity);
+	AmmoCapacityRemaining = AmmoCapacity - AmmoTransfered;
+
+	AmmoCapacity = AmmoCapacityRemaining;
 	bIsReloading = true;
 }
 
 void AShowdownCharacter::StopReloading()
 {
-	AmmoRemaining = 30;
+	AmmoRemaining += AmmoTransfered;
 	bIsReloading = false;
 }
 
@@ -379,13 +384,13 @@ void AShowdownCharacter::RestoreShield(float amount)
 }
 void AShowdownCharacter::RestoreAmmo(float amount)
 {
-	if (amount >= AmmoCapacity - AmmoRemaining)
+	if (amount >= MaxAmmoCapacity - AmmoCapacity)
 	{
-		AmmoRemaining = AmmoCapacity;
+		AmmoCapacity = MaxAmmoCapacity;
 	}
 	else
 	{
-		AmmoRemaining += amount;
+		AmmoCapacity += amount;
 	}
 	ClientUpdateAmmo(AmmoRemaining, AmmoCapacity, bIsReloading);
 }
