@@ -83,7 +83,7 @@ void AShowdownCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 void AShowdownCharacter::ServerReload_Implementation()
 {
-		Reload();
+	Reload();
 }
 
 void AShowdownCharacter::ServerStopReloading_Implementation()
@@ -112,7 +112,7 @@ void AShowdownCharacter::ServerApplyPointDamage_Implementation(float DamageAmoun
 void AShowdownCharacter::ServerRespawn_Implementation()
 {
 	HPRemaining = HPCapacity;
-	AmmoRemaining = AmmoCapacity;
+	AmmoRemaining = AmmoCapacity = StartingAmmoCapacity;
 	ShieldRemaining = ShieldCapacity;
 	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
 

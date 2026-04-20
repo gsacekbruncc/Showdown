@@ -126,6 +126,7 @@ protected:
 	int AmmoRequested;
 	int AmmoTransfered;
 	int AmmoCapacityRemaining;
+	int StartingAmmoCapacity = 30;
 
 	float ADSTargetArmLength = 565.0;
 	float DefaultTargetArmLength = 1167.0;
