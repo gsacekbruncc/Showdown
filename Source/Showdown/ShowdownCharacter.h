@@ -89,6 +89,12 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "State", meta = (AllowPrivateAcess = "true"))
 	bool bIsReloading = false;
 
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "State", meta = (AllowPrivateAcess = "true"))
+	bool CanReload = false;
+
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "State", meta = (AllowPrivateAcess = "true"))
+	bool CanFire = false;
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoRemaining = 30;
 
@@ -112,6 +118,10 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldCapacity = 50;
+
+	
+
+
 
 	
 
