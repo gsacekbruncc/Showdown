@@ -64,6 +64,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* FireAction;
 
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UnlockPitchAction;
+
 	/** Reload Weapon Input Action */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ReloadAction;
@@ -96,6 +99,9 @@ protected:
 	bool CanFire = false;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	bool PitchLocked = true;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoRemaining = 30;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
@@ -120,15 +126,15 @@ protected:
 	float ShieldCapacity = 50;
 
 	
+	
 
 
 
 	
 
-	
+	bool LocalPitchLocked = true;
 	
 	bool bIsFiring = false;
-
 	bool bFreeLookActive = false;
 	bool bReturnCamera = false;
 	bool bFreeLookActiveBeforeADS = false;
@@ -188,16 +194,16 @@ public:
 	virtual void DoJumpEnd();
 
 	UFUNCTION(BlueprintPure, Category="State")
-	bool isAimDownSightsActive() const { return bAimDownSightsActive; }
+	bool GetIsAimDownSightsActive() const { return bAimDownSightsActive; }
 
 	UFUNCTION(BlueprintCallable, Category = "Jump")
 	void SetIsJumping(bool Jumping);
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
-	bool isFiring() const { return bIsFiring; }
+	bool GetIsFiring() const { return bIsFiring; }
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
-	bool isReloading() const { return bIsReloading; }
+	bool GetIsReloading() const { return bIsReloading; }
 
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Reload();
@@ -238,23 +244,29 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void ServerRestoreAmmo(float amount);
 
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerUnlockPitch();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerLockPitch();
+
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientUpdateAmmo(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void HUDUpdateAmmo(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading);
+	void Client_PickUpAmmo(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading);
 
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientUpdateHP(float NewHPRemaining, float NewHPCapacity);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void HUDUpdateHP(float NewHPRemaining, float NewHPCapacity);
+	void Client_PickUpHP(float NewHPRemaining, float NewHPCapacity);
 
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientUpdateShield(float NewShieldRemaining, float NewShieldCapacity);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void HUDUpdateShield(float NewShieldRemaining, float NewShieldCapacity);
+	void Client_PickUpShield(float NewShieldRemaining, float NewShieldCapacity);
 
 	UFUNCTION()
 	float GetHPRemaining() const { return HPRemaining; }
@@ -276,6 +288,9 @@ public:
 
 	UFUNCTION()
 	int GetMaxAmmoCapacity() const { return MaxAmmoCapacity; }
+
+	void LockPitch();
+	void UnlockPitch();
 
 	void RestoreHP(float amount);
 	void RestoreShield(float amount);

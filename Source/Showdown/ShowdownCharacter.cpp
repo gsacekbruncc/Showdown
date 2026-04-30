@@ -22,14 +22,14 @@ AShowdownCharacter::AShowdownCharacter()
 {
 	bReplicates = true;
 
-	LaserBeamOrigin = CreateDefaultSubobject<USceneComponent>(TEXT("LaserBeamOrigin"));
-	LaserBeamOrigin->SetupAttachment(RootComponent);
-	
-	
-	LaserBeamNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("LaserBeamNiagara"));
-	LaserBeamNiagara->SetupAttachment(RootComponent);
-	LaserBeamNiagara->SetupAttachment(LaserBeamOrigin);
-	LaserBeamNiagara->SetAutoActivate(false);
+	//LaserBeamOrigin = CreateDefaultSubobject<USceneComponent>(TEXT("LaserBeamOrigin"));
+	//LaserBeamOrigin->SetupAttachment(RootComponent);
+	//
+	//
+	//LaserBeamNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("LaserBeamNiagara"));
+	//LaserBeamNiagara->SetupAttachment(RootComponent);
+	//LaserBeamNiagara->SetupAttachment(LaserBeamOrigin);
+	//LaserBeamNiagara->SetAutoActivate(true);
 
 
 	// Set size for collision capsule
@@ -78,8 +78,11 @@ void AShowdownCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(AShowdownCharacter, AmmoCapacity);
 	DOREPLIFETIME(AShowdownCharacter, HPRemaining);
 	DOREPLIFETIME(AShowdownCharacter, HPCapacity);
+	DOREPLIFETIME(AShowdownCharacter, ShieldRemaining);
+	DOREPLIFETIME(AShowdownCharacter, ShieldCapacity);
 	DOREPLIFETIME(AShowdownCharacter, bIsReloading);
 	DOREPLIFETIME(AShowdownCharacter, bAimDownSightsActive);
+	DOREPLIFETIME(AShowdownCharacter, PitchLocked);
 }
 
 void AShowdownCharacter::ServerReload_Implementation()
@@ -145,19 +148,29 @@ void AShowdownCharacter::ServerRestoreAmmo_Implementation(float amount)
 	RestoreAmmo(amount);
 }
 
+void AShowdownCharacter::ServerLockPitch_Implementation()
+{
+	PitchLocked = true;
+}
+
+void AShowdownCharacter::ServerUnlockPitch_Implementation()
+{
+	PitchLocked = false;
+}
+
 void AShowdownCharacter::ClientUpdateAmmo_Implementation(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading)
 {
-	HUDUpdateAmmo(NewAmmoRemaining, NewAmmoCapacity, NewIsReloading);	
+	Client_PickUpAmmo(NewAmmoRemaining, NewAmmoCapacity, NewIsReloading);	
 }
 
 void AShowdownCharacter::ClientUpdateHP_Implementation(float NewHPRemaining, float NewHPCapacity)
 {
-	HUDUpdateHP(NewHPRemaining, NewHPCapacity);
+	Client_PickUpHP(NewHPRemaining, NewHPCapacity);
 }
 
 void AShowdownCharacter::ClientUpdateShield_Implementation(float NewShieldRemaining, float NewShieldCapacity)
 {
-	HUDUpdateShield(NewShieldRemaining, NewShieldCapacity);
+	Client_PickUpShield(NewShieldRemaining, NewShieldCapacity);
 }
 
 
@@ -182,6 +195,11 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::ServerStopAimDownSights);
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Started, this, &AShowdownCharacter::AimDownSights);
 		EnhancedInputComponent->BindAction(AimDownSightsAction, ETriggerEvent::Completed, this, &AShowdownCharacter::StopAimDownSights);
+		EnhancedInputComponent->BindAction(UnlockPitchAction, ETriggerEvent::Started, this, &AShowdownCharacter::ServerUnlockPitch);
+		EnhancedInputComponent->BindAction(UnlockPitchAction, ETriggerEvent::Completed, this, &AShowdownCharacter::ServerLockPitch);
+		//EnhancedInputComponent->BindAction(UnlockPitchAction, ETriggerEvent::Started, this, &AShowdownCharacter::UnlockPitch);
+		//EnhancedInputComponent->BindAction(UnlockPitchAction, ETriggerEvent::Completed, this, &AShowdownCharacter::LockPitch);
+
 	}
 	else
 	{
@@ -245,7 +263,32 @@ void AShowdownCharacter::DoLook(float Yaw, float Pitch)
 	{
 		// add yaw and pitch input to controller
 		AddControllerYawInput(Yaw);
-		AddControllerPitchInput(Pitch);
+		if (!PitchLocked)
+		{
+			AddControllerPitchInput(Pitch);
+		}
+	}
+}
+
+void AShowdownCharacter::UnlockPitch()
+{
+	LocalPitchLocked = false;
+	PitchLocked = false; // optional local prediction
+
+	if (!HasAuthority())
+	{
+		ServerUnlockPitch();
+	}
+}
+
+void AShowdownCharacter::LockPitch()
+{
+	LocalPitchLocked = true;
+	PitchLocked = true; // optional local prediction
+
+	if (!HasAuthority())
+	{
+		ServerLockPitch();
 	}
 }
 
@@ -263,9 +306,9 @@ void AShowdownCharacter::DoJumpEnd()
 
 void AShowdownCharacter::AimDownSights()
 {
-	if (!bIsJumping)
+	if (!bIsJumping && !bIsReloading)
 	{
-		LaserBeamNiagara->Activate();
+		//LaserBeamNiagara->Activate();
 		GetCharacterMovement()->MaxWalkSpeed = 300.f;
 		bAimDownSightsActive = true;
 		GetCharacterMovement()->bOrientRotationToMovement = false;
@@ -274,6 +317,7 @@ void AShowdownCharacter::AimDownSights()
 }
 void AShowdownCharacter::StopAimDownSights()
 {
+	PitchLocked = true;
 	LaserBeamNiagara->Deactivate();
 	GetCharacterMovement()->MaxWalkSpeed = 500.f;
 	bAimDownSightsActive = false;
@@ -288,14 +332,11 @@ void AShowdownCharacter::SetIsJumping(bool IsJumping)
 
 void AShowdownCharacter::StartADSCamera(float DeltaTime)
 {
-	if (!bIsReloading)
-	{
-		FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), ADSTargetBoomRotation, DeltaTime, 10.f);
-		float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ADSTargetArmLength, DeltaTime, 10.f);
+	FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), ADSTargetBoomRotation, DeltaTime, 10.f);
+	float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ADSTargetArmLength, DeltaTime, 10.f);
 
-		CameraBoom->SetRelativeRotation(NewCameraRotation);
-		CameraBoom->TargetArmLength = NewCameraArmLength;
-	}
+	CameraBoom->SetRelativeRotation(NewCameraRotation);
+	CameraBoom->TargetArmLength = NewCameraArmLength;
 }
 
 void AShowdownCharacter::StopADSCamera(float DeltaTime)
@@ -397,6 +438,7 @@ void AShowdownCharacter::RestoreAmmo(float amount)
 }
 
 
+
 void AShowdownCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -412,12 +454,11 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		FRotator NewActorRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 25.0f);
 		SetActorRotation(NewActorRotation);
 
-		FVector Start = FVector::ZeroVector;
-		FVector End = FVector(500.0f, 0.0f, 0.0f);
+		/*FVector Start = FVector::ZeroVector;
+		FVector End = FVector(500.0f, 0.0f, 0.0f);*/
 
-		LaserBeamNiagara->SetVectorParameter(TEXT("BeamStart"), Start);
-		LaserBeamNiagara->SetVectorParameter(TEXT("BeamEnd"), End);
-
+		//LaserBeamNiagara->SetVectorParameter(TEXT("BeamStart"), Start);
+		//LaserBeamNiagara->SetVectorParameter(TEXT("BeamEnd"), End);
 		StartADSCamera(DeltaTime);
 
 	}
