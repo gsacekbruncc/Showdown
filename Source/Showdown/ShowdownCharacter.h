@@ -83,6 +83,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects", meta = (AllowPrivateAcess = "true"))
 	UNiagaraSystem* LaserBeamNiagaraSystem;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera", meta = (AllowPrivateAcess = "true"))
+	FRotator ADSTargetBoomRotation = FRotator(-34.000000, 0.000000, 0.000000);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera", meta = (AllowPrivateAcess = "true"))
+	FRotator DefaultTargetBoomRotation = FRotator(-44.000000, 0.000000, 0.000000);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* HealthUpAudio;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* ShieldUpAudio;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* AmmoUpAudio;
+
 	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAcess = "true"))
 	bool bIsJumping = false;
 
@@ -107,26 +122,32 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoCapacity = 30;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int MaxAmmoCapacity = 90;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int MagazineCapacity = 30;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPRemaining = 100;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPCapacity = 100;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
-	float ShieldRemaining = 50;
+	float ShieldRemaining = 0;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldCapacity = 50;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera", meta = (AllowPrivateAcess = "true"))
+	float ADSTargetArmLength = 565.0;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera", meta = (AllowPrivateAcess = "true"))
+	float DefaultTargetArmLength = 1167.0;
+
 	
-	
+
 
 
 
@@ -136,7 +157,7 @@ protected:
 	
 	bool bIsFiring = false;
 	bool bFreeLookActive = false;
-	bool bReturnCamera = false;
+	bool bReturnCamera = false; 
 	bool bFreeLookActiveBeforeADS = false;
 
 	int AmmoRequested;
@@ -144,15 +165,15 @@ protected:
 	int AmmoCapacityRemaining;
 	int StartingAmmoCapacity = 30;
 
-	float ADSTargetArmLength = 565.0;
-	float DefaultTargetArmLength = 1167.0;
+	/*float ADSTargetArmLength = 565.0;
+	float DefaultTargetArmLength = 1167.0;*/
 	float CameraInterpSpeed;
 	
 	FRotator StoredControlRotation;
 	FRotator ReturnTargetRotation;
 
-	FRotator ADSTargetBoomRotation = FRotator(-34.000000, 0.000000, 0.000000);
-	FRotator DefaultTargetBoomRotation = FRotator(-44.000000, 0.000000, 0.000000);
+	/*FRotator ADSTargetBoomRotation = FRotator(-34.000000, 0.000000, 0.000000);
+	FRotator DefaultTargetBoomRotation = FRotator(-44.000000, 0.000000, 0.000000);*/
 	
 public:
 
@@ -288,6 +309,24 @@ public:
 
 	UFUNCTION()
 	int GetMaxAmmoCapacity() const { return MaxAmmoCapacity; }
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayHealthUpAudio();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayShieldUpAudio();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayAmmoUpAudio();
+
+	UFUNCTION(Client, Unreliable)
+	void ClientPlayHealthUpAudio();
+
+	UFUNCTION(Client, Unreliable)
+	void ClientPlayShieldUpAudio();
+
+	UFUNCTION(Client, Unreliable)
+	void ClientPlayAmmoUpAudio();
 
 	void LockPitch();
 	void UnlockPitch();

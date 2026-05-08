@@ -3,6 +3,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 #include "ShowdownCharacter.h"
 
 
@@ -37,18 +38,51 @@ AResourcePickup::AResourcePickup()
 
 }
 
-
-
 // Called when the game starts or when spawned
 void AResourcePickup::BeginPlay()
 {
 	Super::BeginPlay();
-	
+}
+
+void AResourcePickup::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AResourcePickup, IsActive);
+}
+
+void AResourcePickup::OnRep_IsActive()
+{
+	SetActorHiddenInGame(!IsActive);
+	SetActorEnableCollision(IsActive);
+}
+
+void AResourcePickup::SetPickupActive(bool NewActive)
+{
+	IsActive = NewActive;
+
+	SetActorHiddenInGame(!IsActive);
+	SetActorEnableCollision(IsActive);
+}
+
+void AResourcePickup::ReactivatePickup()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	SetPickupActive(true);
 }
 
 void AResourcePickup::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if(!HasAuthority())
+	{
+		return;
+	}
+
+	if (!IsActive)
 	{
 		return;
 	}
@@ -64,29 +98,43 @@ void AResourcePickup::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, A
 		return;
 	}
 
+	bool bPickedUp = false;
+
 	switch (PickupType)
 	{
 		case EPickupType::Health:
-			if(PlayerCharacter->GetHPRemaining() != PlayerCharacter->GetHPCapacity())
+			if (PlayerCharacter->GetHPRemaining() < PlayerCharacter->GetHPCapacity())
 			{
 				PlayerCharacter->RestoreHP(RestoreAmount);
-				Destroy();
+				PlayerCharacter->ClientPlayHealthUpAudio();
+				bPickedUp = true;
 			}
 			break;
+
 		case EPickupType::Shield:
-			if (PlayerCharacter->GetShieldRemaining() != PlayerCharacter->GetShieldCapacity())
+			if (PlayerCharacter->GetShieldRemaining() < PlayerCharacter->GetShieldCapacity())
 			{
 				PlayerCharacter->RestoreShield(RestoreAmount);
-				Destroy();
+				PlayerCharacter->ClientPlayShieldUpAudio();
+				bPickedUp = true;
 			}
 			break;
+
 		case EPickupType::Ammo:
-			if (PlayerCharacter->GetMaxAmmoCapacity() != PlayerCharacter->GetAmmoCapacity())
+			if (PlayerCharacter->GetAmmoCapacity() < PlayerCharacter->GetMaxAmmoCapacity())
 			{
 				PlayerCharacter->RestoreAmmo(RestoreAmount);
-				Destroy();
+				PlayerCharacter->ClientPlayAmmoUpAudio();
+				bPickedUp = true;
 			}
 			break;
+	}
+
+	if (bPickedUp)
+	{
+		SetPickupActive(false);
+
+		GetWorldTimerManager().SetTimer(RespawnTimerHandle, this, &AResourcePickup::ReactivatePickup, RespawnTime, false);
 	}
 }
 

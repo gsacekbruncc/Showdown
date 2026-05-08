@@ -17,6 +17,8 @@
 #include "Net/UnrealNetwork.h"
 #include "NavigationSystem.h"
 #include "NavigationPath.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerStart.h"
 
 AShowdownCharacter::AShowdownCharacter()
 {
@@ -117,20 +119,18 @@ void AShowdownCharacter::ServerRespawn_Implementation()
 {
 	HPRemaining = HPCapacity;
 	AmmoRemaining = AmmoCapacity = StartingAmmoCapacity;
-	ShieldRemaining = ShieldCapacity;
-	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+	ShieldRemaining = 0;
 
-	if (!NavSystem)
-		return;
+	TArray<AActor*> PlayerStarts;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), PlayerStarts);
 
-	FNavLocation RandomLocation;
+	AActor* ChosenStart = PlayerStarts[FMath::RandRange(0, PlayerStarts.Num() - 1)];
 
-	bool bFound = NavSystem->GetRandomReachablePointInRadius(GetActorLocation(), 2000.0f, RandomLocation);
+	FVector SpawnLocation = ChosenStart->GetActorLocation();
+	FRotator SpawnRotation = ChosenStart->GetActorRotation();
 
-	if (bFound)
-	{
-		SetActorLocation(RandomLocation.Location);
-	}
+	SetActorLocationAndRotation(SpawnLocation, SpawnRotation, false, nullptr, ETeleportType::TeleportPhysics);
+
 }
 
 void AShowdownCharacter::ServerRestoreHP_Implementation(float amount)
@@ -173,6 +173,20 @@ void AShowdownCharacter::ClientUpdateShield_Implementation(float NewShieldRemain
 	Client_PickUpShield(NewShieldRemaining, NewShieldCapacity);
 }
 
+void AShowdownCharacter::ClientPlayHealthUpAudio_Implementation()
+{
+	PlayHealthUpAudio();
+}
+
+void AShowdownCharacter::ClientPlayShieldUpAudio_Implementation()
+{
+	PlayShieldUpAudio();
+}
+
+void AShowdownCharacter::ClientPlayAmmoUpAudio_Implementation()
+{
+	PlayAmmoUpAudio();
+}
 
 void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
