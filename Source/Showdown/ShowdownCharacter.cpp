@@ -36,7 +36,7 @@ AShowdownCharacter::AShowdownCharacter()
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -85,38 +85,61 @@ void AShowdownCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(AShowdownCharacter, bIsReloading);
 	DOREPLIFETIME(AShowdownCharacter, bAimDownSightsActive);
 	DOREPLIFETIME(AShowdownCharacter, PitchLocked);
+	DOREPLIFETIME(AShowdownCharacter, IsDead);
 }
 
 void AShowdownCharacter::ServerReload_Implementation()
 {
-	Reload();
+	if (!IsDead)
+	{
+		Reload();
+	}
 }
 
 void AShowdownCharacter::ServerStopReloading_Implementation()
 {
-	StopReloading();
+	if (!IsDead)
+	{
+		StopReloading();
+	}
 }
 
 void AShowdownCharacter::ServerFire_Implementation()
 {
-	Fire();
+	if (!IsDead)
+	{
+		Fire();
+	}
 }
+
 void AShowdownCharacter::ServerAimDownSights_Implementation()
 {
-	AimDownSights();
+	if (!IsDead)
+	{
+		AimDownSights();
+	}
 }
+
 void AShowdownCharacter::ServerStopAimDownSights_Implementation()
 {
-	StopAimDownSights();
+	if (!IsDead)
+	{
+		StopAimDownSights();
+	}
 }
 
 void AShowdownCharacter::ServerApplyPointDamage_Implementation(float DamageAmount)
 {
-	ApplyPointDamage(DamageAmount);
+	if (!IsDead)
+	{
+		ApplyPointDamage(DamageAmount);
+	}
 }
 
 void AShowdownCharacter::ServerRespawn_Implementation()
 {
+	IsDead = false;
+
 	HPRemaining = HPCapacity;
 	AmmoRemaining = AmmoCapacity = StartingAmmoCapacity;
 	ShieldRemaining = 0;
@@ -135,32 +158,47 @@ void AShowdownCharacter::ServerRespawn_Implementation()
 
 void AShowdownCharacter::ServerRestoreHP_Implementation(float amount)
 {
-	RestoreHP(amount);
+	if (!IsDead)
+	{
+		RestoreHP(amount);
+	}
 }
 
 void AShowdownCharacter::ServerRestoreShield_Implementation(float amount)
 {
-	RestoreShield(amount);
+	if (!IsDead)
+	{
+		RestoreShield(amount);
+	}
 }
 
 void AShowdownCharacter::ServerRestoreAmmo_Implementation(float amount)
 {
-	RestoreAmmo(amount);
+	if (!IsDead)
+	{
+		RestoreAmmo(amount);
+	}
 }
 
 void AShowdownCharacter::ServerLockPitch_Implementation()
 {
-	PitchLocked = true;
+	if (!IsDead)
+	{
+		PitchLocked = true;
+	}
 }
 
 void AShowdownCharacter::ServerUnlockPitch_Implementation()
 {
-	PitchLocked = false;
+	if (!IsDead)
+	{
+		PitchLocked = false;
+	}
 }
 
 void AShowdownCharacter::ClientUpdateAmmo_Implementation(int NewAmmoRemaining, int NewAmmoCapacity, bool NewIsReloading)
 {
-	Client_PickUpAmmo(NewAmmoRemaining, NewAmmoCapacity, NewIsReloading);	
+	Client_PickUpAmmo(NewAmmoRemaining, NewAmmoCapacity, NewIsReloading);
 }
 
 void AShowdownCharacter::ClientUpdateHP_Implementation(float NewHPRemaining, float NewHPCapacity)
@@ -192,10 +230,10 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+
 		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AShowdownCharacter::DoJumpStart);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AShowdownCharacter::DoJumpEnd);
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AShowdownCharacter::Move);
@@ -223,6 +261,11 @@ void AShowdownCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 void AShowdownCharacter::Move(const FInputActionValue& Value)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
@@ -232,6 +275,11 @@ void AShowdownCharacter::Move(const FInputActionValue& Value)
 
 void AShowdownCharacter::Look(const FInputActionValue& Value)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
@@ -243,6 +291,11 @@ void AShowdownCharacter::Look(const FInputActionValue& Value)
 
 void AShowdownCharacter::DoMove(float Right, float Forward)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	if (GetController() != nullptr)
 	{
 		// find out which way is forward
@@ -256,7 +309,7 @@ void AShowdownCharacter::DoMove(float Right, float Forward)
 		{
 			Rotation = GetController()->GetControlRotation();
 		}
-		
+
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
 		// get forward vector
@@ -273,6 +326,11 @@ void AShowdownCharacter::DoMove(float Right, float Forward)
 
 void AShowdownCharacter::DoLook(float Yaw, float Pitch)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	if (GetController() != nullptr)
 	{
 		// add yaw and pitch input to controller
@@ -286,6 +344,11 @@ void AShowdownCharacter::DoLook(float Yaw, float Pitch)
 
 void AShowdownCharacter::UnlockPitch()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	LocalPitchLocked = false;
 	PitchLocked = false; // optional local prediction
 
@@ -297,6 +360,11 @@ void AShowdownCharacter::UnlockPitch()
 
 void AShowdownCharacter::LockPitch()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	LocalPitchLocked = true;
 	PitchLocked = true; // optional local prediction
 
@@ -308,6 +376,11 @@ void AShowdownCharacter::LockPitch()
 
 void AShowdownCharacter::DoJumpStart()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	// signal the character to jump
 	Jump();
 }
@@ -320,6 +393,11 @@ void AShowdownCharacter::DoJumpEnd()
 
 void AShowdownCharacter::AimDownSights()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	if (!bIsJumping && !bIsReloading)
 	{
 		//LaserBeamNiagara->Activate();
@@ -329,8 +407,14 @@ void AShowdownCharacter::AimDownSights()
 		//bUseControllerRotationYaw = true;
 	}
 }
+
 void AShowdownCharacter::StopAimDownSights()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	PitchLocked = true;
 	LaserBeamNiagara->Deactivate();
 	GetCharacterMovement()->MaxWalkSpeed = 500.f;
@@ -341,11 +425,21 @@ void AShowdownCharacter::StopAimDownSights()
 
 void AShowdownCharacter::SetIsJumping(bool IsJumping)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	bIsJumping = IsJumping;
 }
 
 void AShowdownCharacter::StartADSCamera(float DeltaTime)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	FRotator NewCameraRotation = FMath::RInterpTo(CameraBoom->GetRelativeRotation(), ADSTargetBoomRotation, DeltaTime, 10.f);
 	float NewCameraArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, ADSTargetArmLength, DeltaTime, 10.f);
 
@@ -364,6 +458,11 @@ void AShowdownCharacter::StopADSCamera(float DeltaTime)
 
 void AShowdownCharacter::Fire()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	if (bAimDownSightsActive && !bIsReloading)
 	{
 		if (AmmoRemaining > 0)
@@ -375,7 +474,12 @@ void AShowdownCharacter::Fire()
 }
 
 void AShowdownCharacter::Reload()
-{	
+{
+	if (IsDead)
+	{
+		return;
+	}
+
 	AmmoRequested = MagazineCapacity - AmmoRemaining;
 	AmmoTransfered = FMath::Min(AmmoRequested, AmmoCapacity);
 	AmmoCapacityRemaining = AmmoCapacity - AmmoTransfered;
@@ -386,12 +490,22 @@ void AShowdownCharacter::Reload()
 
 void AShowdownCharacter::StopReloading()
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	AmmoRemaining += AmmoTransfered;
 	bIsReloading = false;
 }
 
 void AShowdownCharacter::ApplyPointDamage(float DamageAmount)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	float DamageRemaining;
 	if (ShieldRemaining > 0)
 	{
@@ -415,7 +529,12 @@ void AShowdownCharacter::ApplyPointDamage(float DamageAmount)
 
 void AShowdownCharacter::RestoreHP(float amount)
 {
-	if(amount >= HPCapacity - HPRemaining)
+	if (IsDead)
+	{
+		return;
+	}
+
+	if (amount >= HPCapacity - HPRemaining)
 	{
 		HPRemaining = HPCapacity;
 	}
@@ -424,10 +543,16 @@ void AShowdownCharacter::RestoreHP(float amount)
 		HPRemaining += amount;
 	}
 	ClientUpdateHP(HPRemaining, HPCapacity);
-	
+
 }
+
 void AShowdownCharacter::RestoreShield(float amount)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	if (amount >= ShieldCapacity - ShieldRemaining)
 	{
 		ShieldRemaining = ShieldCapacity;
@@ -438,8 +563,14 @@ void AShowdownCharacter::RestoreShield(float amount)
 	}
 	ClientUpdateShield(ShieldRemaining, ShieldCapacity);
 }
+
 void AShowdownCharacter::RestoreAmmo(float amount)
 {
+	if (IsDead)
+	{
+		return;
+	}
+
 	if (amount >= MaxAmmoCapacity - AmmoCapacity)
 	{
 		AmmoCapacity = MaxAmmoCapacity;
@@ -458,7 +589,7 @@ void AShowdownCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	//Handles ADS
-	if (bAimDownSightsActive && !bIsJumping && !bIsReloading && GetController())
+	if (!IsDead && bAimDownSightsActive && !bIsJumping && !bIsReloading && GetController())
 	{
 		FRotator CurrentRotation = GetActorRotation();
 		FRotator TargetRotation = GetController()->GetControlRotation();
@@ -476,7 +607,7 @@ void AShowdownCharacter::Tick(float DeltaTime)
 		StartADSCamera(DeltaTime);
 
 	}
-	else if (bIsJumping || bIsReloading)
+	else if (!IsDead && (bIsJumping || bIsReloading))
 	{
 		StopAimDownSights();
 		StopADSCamera(DeltaTime);

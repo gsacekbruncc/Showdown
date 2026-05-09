@@ -116,28 +116,34 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	bool PitchLocked = true;
 
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	bool IsDead = false;
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoRemaining = 30;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int AmmoCapacity = 30;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int MaxAmmoCapacity = 90;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	int MagazineCapacity = 30;
 
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	int TotalKills = 0;
+
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPRemaining = 100;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float HPCapacity = 100;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldRemaining = 0;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAcess = "true"))
 	float ShieldCapacity = 50;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera", meta = (AllowPrivateAcess = "true"))
